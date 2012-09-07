@@ -97,7 +97,7 @@ module StructuredReport
 						}
 
 						xml.Style('ss:ID' => 'Currency') {
-							xml.NumberFormat('ss:Format' => "&quot;$&quot;#,##0.00")
+							xml.NumberFormat('ss:Format' => "\"$\"#,##0.00")
 						}
 					}
 
@@ -162,7 +162,7 @@ module StructuredReport
 		def format_value(value,type = :csv)
 			format = Column.formats[self.type]
 			output = sprintf(format,value)
-			output.gsub!(/[^0-9.-]/,"") if type == :xls and xls_type == 'Numeric'
+			output.gsub!(/[^0-9.-]/,"") if type == :xls and xls_type == 'Number'
 
 			return output
 		end
@@ -186,9 +186,9 @@ module StructuredReport
 		def self.xls_types
 			{
 				:string => 'String',
-				:numeric => 'Numeric',
-				:float => 'Numeric',
-				:currency => 'Numeric'
+				:numeric => 'Number',
+				:float => 'Number',
+				:currency => 'Number'
 			}
 		end
 
