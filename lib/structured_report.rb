@@ -1,4 +1,5 @@
 require 'csv'
+require 'nokogiri'
 
 module StructuredReport
 	class Report
@@ -18,15 +19,8 @@ module StructuredReport
 		end
 
 		def add_column(name,options = {})
-			options ||= {}
-
 			raise ColumnAlreadyExists if columns[name.to_sym]
-			columns[name.to_sym] = {
-				:title => (options[:title] || ""),
-				:type => (options[:type] || :string),
-				:format => (options[:format] || "%s"),
-				:data => []
-			}
+			columns[name.to_sym] = StructuredReport::Column.new(options)
 		end
 
 		def add_columns(columns)
@@ -35,6 +29,10 @@ module StructuredReport
 					add_column(name,options)
 				end
 			end
+		end
+
+		def <<(data)
+			add_row(data)
 		end
 
 		def add_row(data)
@@ -77,7 +75,7 @@ module StructuredReport
 				self.each do |row|
 					data = []
 					row.each do |key,value|
-						data << sprintf(columns[key][:format],value)
+						data << columns[key].format_value(value)
 					end
 					csv << data
 				end
@@ -108,14 +106,14 @@ module StructuredReport
 							columns.each do |id,column|
 								attributes = { 'ss:AutoFitWidth' => 1 }
 								attributes['ss:Width'] = column[:width] if column[:width]
-								attributes['ss:Type'] = 'Currency' if column[:type] == :currency
+								attributes['ss:StyleID'] = 'Currency' if column[:type] == :currency
 								xml.Column(attributes)
 							end
 
 							xml.Row {
 								columns.each do |id,column|
 									xml.Cell('ss:StyleID' => "Header") {
-										xml.Data('ss:Type' => Report.xlsTypes[:string]) { 
+										xml.Data('ss:Type' => Column.xls_types[:string]) { 
 											xml.text column[:title] 
 										}
 									}
@@ -126,8 +124,8 @@ module StructuredReport
 								xml.Row {
 									columns.each do |id,column|
 										xml.Cell {
-											xml.Data('ss:Type' => Report.xlsTypes[column[:type]]) { 
-												xml.text sprintf(column[:format],row[id])
+											xml.Data('ss:Type' => column[:xls_type]) { 
+												xml.text column.format_value(row[id],:xls)
 											}
 										}
 									end								
@@ -140,12 +138,66 @@ module StructuredReport
 
 			return builder.to_xml
 		end
+	end
 
-		def self.xlsTypes
+	class Column
+		class InvalidColumnType < StandardError; end
+
+		attr_accessor :id,:title,:type,:width
+		attr_reader :data
+
+		def initialize(options)
+			options ||= {}
+
+			options[:type] ||= :string
+			raise InvalidColumnType unless Column.column_types.include?(options[:type])
+
+			@title = (options[:title] || "")
+			@type = options[:type]
+			@format = (options[:format] || Column.formats[options[:type]])
+			@width = options[:width]
+			@data = []
+		end
+
+		def format_value(value,type = :csv)
+			format = Column.formats[self.type]
+			output = sprintf(format,value)
+			output.gsub!(/[^0-9.-]/,"") if type == :xls and xls_type == 'Numeric'
+
+			return output
+		end
+
+		def [](attribute)
+			self.send(attribute.to_s)
+		end
+
+		def <<(value)
+			@data << value
+		end
+
+		def xls_type
+			Column.xls_types[self.type]
+		end
+
+		def self.column_types
+			[:string,:numeric,:float,:currency]
+		end
+
+		def self.xls_types
 			{
 				:string => 'String',
 				:numeric => 'Numeric',
+				:float => 'Numeric',
 				:currency => 'Numeric'
+			}
+		end
+
+		def self.formats
+			{
+				:string => '%s',
+				:numeric => '%d',
+				:float => '%f',
+				:currency => '$%.2f'
 			}
 		end
 	end
