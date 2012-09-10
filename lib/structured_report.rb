@@ -36,15 +36,19 @@ module StructuredReport
 		end
 
 		def add_row(data)
-			raise MissingColumnData unless data.count == columns.count
+			raise MissingColumnData unless data.count >= columns.count
 
 			if data.respond_to?(:keys)
 				# Input is a hash
-
+				i = 0
 				data.each do |key,value|
-					raise ColumnNotFound unless columns[key.to_sym]
-					columns[key.to_sym][:data][@count] = value
+					if columns[key.to_sym]
+						columns[key.to_sym] << value
+						i += 1
+					end
 				end
+
+				raise MissingColumnData unless i == columns.count
 			else
 				i = 0
 				columns.each do |id,column|
