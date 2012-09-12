@@ -147,7 +147,7 @@ module StructuredReport
 	class Column
 		class InvalidColumnType < StandardError; end
 
-		attr_accessor :id,:title,:type,:width
+		attr_accessor :id,:title,:type,:width,:format
 		attr_reader :data
 
 		def initialize(options)
@@ -158,17 +158,20 @@ module StructuredReport
 
 			@title = (options[:title] || "")
 			@type = options[:type]
-			@format = (options[:format] || Column.formats[options[:type]])
+			@format = options[:format]
 			@width = options[:width]
 			@data = []
 		end
 
 		def format_value(value,type = :csv)
-			format = Column.formats[self.type]
 			output = sprintf(format,value)
 			output.gsub!(/[^0-9.-]/,"") if type == :xls and xls_type == 'Number'
 
 			return output
+		end
+
+		def format
+			(@format || Column.formats[self.type])
 		end
 
 		def [](attribute)
