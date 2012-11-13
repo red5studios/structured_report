@@ -142,6 +142,67 @@ module StructuredReport
 
 			return builder.to_xml
 		end
+
+		def to_text
+
+			widths = {}
+
+			self.each do |row|
+				c = 0
+				row.each do |key,value|
+					output = columns[key].format_value(value).to_s
+					widths[c] = (widths[c] && widths[c] > output.length) ? widths[c] : output.length
+					c += 1
+				end
+			end
+
+			headers = ""
+			divider = ""
+			c = 0
+			columns.each do |id,column|
+				if c > 0 and c < widths.count
+					headers += " | " 
+					divider += "---"
+				end
+
+				widths[c] = (widths[c] && widths[c] > column[:title].length) ? widths[c] : column[:title].length
+				headers += column[:title].ljust(widths[c])
+				divider += "-"*widths[c]
+
+				c += 1
+
+				if c == widths.count
+					headers += " " 
+					divider += "-"
+				end
+			end
+
+			output = "#{headers}\n#{divider}\n"
+
+			self.each do |row|
+				c = 0
+				row.each do |key,value|
+					output += " | " if c > 0 and c < widths.count
+
+					column = columns[key]
+					s = column.format_value(value)
+
+					if [:numeric,:float,:currency].include?(column.type)
+						output += s.rjust(widths[c])
+					else
+						output += s.ljust(widths[c])
+					end
+
+					c += 1
+
+					output += " " if c == widths.count
+				end
+
+				output += "\n"
+			end
+
+			return output
+		end
 	end
 
 	class Column
