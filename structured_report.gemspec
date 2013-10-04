@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'structured_report'
-  s.version     = '1.0.5'
+  s.version     = '1.0.6'
   s.summary     = "Simple structure for generating columned reports"
   s.description = ""
   s.authors     = ["Jason Smith"]

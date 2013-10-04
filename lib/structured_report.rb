@@ -224,9 +224,21 @@ module StructuredReport
 			@data = []
 		end
 
-		def format_value(value,type = :csv)
-			output = sprintf(format,value)
-			output.gsub!(/[^0-9.-]/,"") if type == :xls and xls_type == 'Number'
+		def format_value(value,type = :csv,output_key = :text)
+			if value.respond_to?(:keys)
+				display_value = value[output_key]
+			else
+				display_value = value
+			end
+
+			return "" unless display_value
+
+			begin
+				output = sprintf(format,display_value)
+				output.gsub!(/[^0-9.-]/,"") if type == :xls and xls_type == 'Number'
+			rescue => e
+				raise "Error Rendering Value: #{value}, #{display_value}, #{type}, #{output_key}, #{format} - #{e}"
+			end
 
 			return output
 		end
