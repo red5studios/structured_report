@@ -1,5 +1,5 @@
 # StructuredReport #
-A helper class to generate XLS and CSV columned reports. Uses Nokogiri to generate the XML-based XLS.
+A helper class to generate XLS and CSV columned reports. Uses WriteExcel to generate the XML-based XLS.
 
 ## Usage ##
 

@@ -1,5 +1,6 @@
 require 'csv'
-require 'nokogiri'
+require 'stringio'
+require 'writeexcel'
 
 module StructuredReport
 	class Report
@@ -87,60 +88,36 @@ module StructuredReport
 		end
 
 		def to_xls
-			builder = Nokogiri::XML::Builder.new do |xml|
-				xml.Workbook(
-					'xmlns' => "urn:schemas-microsoft-com:office:spreadsheet",
-  					'xmlns:o' => "urn:schemas-microsoft-com:office:office",
-  					'xmlns:x' => "urn:schemas-microsoft-com:office:excel",
-  					'xmlns:ss' => "urn:schemas-microsoft-com:office:spreadsheet",
-  					'xmlns:html' => "http://www.w3.org/TR/REC-html40"
-  				) {
-					xml.Styles {
-						xml.Style('ss:ID' => 'Header') {
-							xml.Font('ss:Bold' => 1)
-						}
+			io = StringIO.new
+			workbook  = WriteExcel.new(io)
 
-						xml.Style('ss:ID' => 'Currency') {
-							xml.NumberFormat('ss:Format' => "\"$\"#,##0.00")
-						}
-					}
+			worksheet1 = workbook.add_worksheet
 
-					xml.Worksheet('ss:Name' => "Sheet 1") {
-						xml.Table('ss:ExpandedColumnCount' => columns.count) {
-							columns.each do |id,column|
-								attributes = { 'ss:AutoFitWidth' => 1 }
-								attributes['ss:Width'] = column[:width] if column[:width]
-								attributes['ss:StyleID'] = 'Currency' if column[:type] == :currency
-								xml.Column(attributes)
-							end
+    		format_header = workbook.add_format(:bold => 1)
+    		format_currency = workbook.add_format(:num_format => "\"$\"#,##0.00")
 
-							xml.Row {
-								columns.each do |id,column|
-									xml.Cell('ss:StyleID' => "Header") {
-										xml.Data('ss:Type' => Column.xls_types[:string]) { 
-											xml.text column[:title] 
-										}
-									}
-								end								
-							}
+    		c = 0
+			columns.each do |id,column|
+				width = (column[:width] ? (column[:width]/7) : nil)
+				worksheet1.set_column(c,c,width,(column[:type] == :currency ? format_currency : nil))
+				worksheet1.write_string(0,c,column[:title],format_header)
 
-							self.each do |row|
-								xml.Row {
-									columns.each do |id,column|
-										xml.Cell {
-											xml.Data('ss:Type' => column[:xls_type]) { 
-												xml.text column.format_value(row[id],:xls)
-											}
-										}
-									end								
-								}
-							end
-						}
-					}
-  				}
+				c += 1
 			end
 
-			return builder.to_xml
+			r = 0
+			self.each do |row|
+				r += 1
+				c = 0
+				columns.each do |id,column|
+					worksheet1.write(r,c,column.format_value(row[id],:xls))
+					c += 1
+				end								
+			end
+
+			workbook.close
+
+			return io.string
 		end
 
 		def to_text
